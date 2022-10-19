@@ -14,13 +14,18 @@ module mkBenesSwitchTest();
     rule startNoSwitch if (cycle == 1);
         switch.inPort[0].put(11);
         switch.inPort[1].put(19);
-        switch.controlPort.setControl(NoSwitch);
+        switch.controlPort.setControl(Switch);
     endrule
 
     rule startSwitch if (cycle == 10);
         switch.inPort[0].put(37);
         switch.inPort[1].put(31);
         switch.controlPort.setControl(Switch);
+    endrule
+
+    rule startBroadcast if (cycle == 20);
+        switch.inPort[0].put(5);
+        switch.controlPort.setControl(Broadcast);
     endrule
 
     rule print;
@@ -31,8 +36,8 @@ module mkBenesSwitchTest();
         $display("OutPort1: %d (at cycle %d)", data1, cycle);
     endrule
 
-    rule finish if (cycle >= 30);
-        $display("Finished");
+    rule finish if (cycle >= 100);
+        $display("Finished at cycle: %d", cycle);
         $finish(0);
     endrule
 endmodule

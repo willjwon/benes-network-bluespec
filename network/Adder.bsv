@@ -14,7 +14,7 @@ module mkAdder(Adder#(opType)) provisos (
 );
     Fifo#(1, opType) opA <- mkBypassFifo;
     Fifo#(1, opType) opB <- mkBypassFifo;
-    Fifo#(1, opType) opResult <- mkPipelineFifo;
+    Fifo#(1, opType) opResult <- mkBypassFifo;
 
     rule doAddition if (opA.notEmpty() && opB.notEmpty());
         let a = opA.first();
