@@ -8,6 +8,7 @@ BIN_DIR=${BUILD_DIR}/bin
 B_DIR=${BUILD_DIR}/bdir
 INFO_DIR=${BUILD_DIR}/info
 SIM_DIR=${BUILD_DIR}/sim
+VERILOG_DIR=${BUILD_DIR}/verilog
 
 # cleanup
 function removeBuildDir {
@@ -20,6 +21,7 @@ function createBuildDirs {
     mkdir -p ${INFO_DIR}
     mkdir -p ${BIN_DIR}
     mkdir -p ${SIM_DIR}
+    mkdir -p ${VERILOG_DIR}
 }
 
 INCLUDE_PATH="+"  # default: current folder
@@ -38,7 +40,7 @@ function compileSimulation {
         -aggressive-conditions -check-assert -parallel-sim-link 8 \
         -bdir ${B_DIR} -simdir ${SIM_DIR} -info-dir ${INFO_DIR} \
         -p ${INCLUDE_PATH} \
-        ./testbench/$1.bsv
+        ${SCRIPT_DIR}/testbench/$1.bsv
 
     # copmile bluesim (simulation) binary
     bsc -u -sim \
@@ -48,10 +50,20 @@ function compileSimulation {
         -Xc++ -O0
 }
 
+function compileVerilog {
+    # compile verilog files
+    bsc -verilog \
+        -g mk$1 \
+        -steps-max-intervals 200000 -aggressive-conditions \
+        -bdir ${B_DIR} -simdir ${SIM_DIR} -info-dir ${INFO_DIR} \
+        -p ${INCLUDE_PATH} \
+        -u ${SCRIPT_DIR}/instance/$1.bsv
+    find ${SCRIPT_DIR} -name "*.v" -exec mv {} ${VERILOG_DIR} \;
+}
+
 function runSimulation {
     ${BIN_DIR}/$1
 }
-
 
 # main run script
 # Script
@@ -65,6 +77,11 @@ case "$1" in
     compileSimulation $2;;
 -r|--run)
     runSimulation $2;;
+-v|--verilog)
+    removeBuildDir
+    compute_include_path
+    createBuildDirs
+    compileVerilog $2;;
 -h|--help|*)
     printf "TODO";;
 esac
