@@ -5,7 +5,7 @@ import BenesSwitch::*;
 (* synthesize *)
 module mkBenesSwitchTest();
     Reg#(Bit#(32)) cycle <- mkReg(0);
-    BenesSwitch#(Bit#(64)) switch <- mkBenesSwitch;
+    let switch <- mkBenesSwitch;
 
     rule countUp;
         cycle <= cycle + 1;

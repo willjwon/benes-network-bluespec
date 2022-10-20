@@ -18,11 +18,11 @@ typedef enum {
 );
 
 interface AdderSwitchIngressPort;
-    method Action put(Bit#(64) data);
+    method Action put(Bit#(640) data);
 endinterface
 
 interface AdderSwitchEgressPort;
-    method ActionValue#(Bit#(64)) get;
+    method ActionValue#(Bit#(640)) get;
 endinterface
 
 interface AdderSwitchControlPort;
@@ -36,19 +36,29 @@ interface AdderSwitch;
 endinterface
 
 module mkAdderSwitch(AdderSwitch);
-    Vector#(2, Fifo#(1, Bit#(64))) inputs <- replicateM(mkBypassFifo);
-    Vector#(2, Fifo#(1, Bit#(64))) outputs <- replicateM(mkPipelineFifo);
+    Vector#(2, Fifo#(1, Bit#(640))) inputs <- replicateM(mkBypassFifo);
+    Vector#(2, Fifo#(1, Bit#(640))) outputs <- replicateM(mkPipelineFifo);
     Fifo#(1, AdderSwitchControl) control <- mkBypassFifo;
 
     // instantiate adder
-    let adder <- mkLI_FP64Adder;
-    Fifo#(1, Bit#(64)) adderResult <- mkBypassFifo;
-    mkConnection(adder.getResult, adderResult.enq);
-
-    rule doAddition if (inputs[0].notEmpty && inputs[1].notEmpty);
-        adder.putArgA(inputs[0].first);
-        adder.putArgB(inputs[1].first);
+    Vector#(10, LI_FP64ALU) adders <- replicateM(mkLI_FP64Adder);
+    Fifo#(1, Bit#(640)) adderResult <- mkBypassFifo;
+    
+    rule assignAdderResult;
+        Bit#(640) adderResultValue = 0;
+        for (Integer i = 0; i < 10; i = i + 1) begin
+            let result <- adders[i].getResult();
+            adderResultValue[((i + 1) * 64 - 1):(i * 64)] = result;
+        end
+        adderResult.enq(adderResultValue);
     endrule
+    
+    for (Integer i = 0; i < 10; i = i + 1) begin
+        rule doAddition if (inputs[0].notEmpty && inputs[1].notEmpty);
+            adders[i].putArgA(inputs[0].first[((i + 1) * 64 - 1):(i * 64)]);
+            adders[i].putArgB(inputs[1].first[((i + 1) * 64 - 1):(i * 64)]);
+        endrule
+    end
 
     rule doOperation if (control.notEmpty);
         case (control.first)
@@ -121,7 +131,7 @@ module mkAdderSwitch(AdderSwitch);
     Vector#(2, AdderSwitchIngressPort) inPortDef;
     for (Integer i = 0; i < 2; i = i + 1) begin
         inPortDef[i] = interface AdderSwitchIngressPort
-            method Action put(Bit#(64) data) if (inputs[i].notFull());
+            method Action put(Bit#(640) data) if (inputs[i].notFull());
                 inputs[i].enq(data);
             endmethod
         endinterface;
@@ -130,7 +140,7 @@ module mkAdderSwitch(AdderSwitch);
     Vector#(2, AdderSwitchEgressPort) outPortDef;
     for (Integer i = 0; i < 2; i = i + 1) begin
         outPortDef[i] = interface AdderSwitchEgressPort
-            method ActionValue#(Bit#(64)) get if (outputs[i].notEmpty());
+            method ActionValue#(Bit#(640)) get if (outputs[i].notEmpty());
                 outputs[i].deq();
                 return outputs[i].first();
             endmethod

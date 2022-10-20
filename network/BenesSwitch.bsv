@@ -12,11 +12,11 @@ typedef enum {
 );
 
 interface BenesSwitchIngressPort;
-    method Action put(Bit#(64) data);
+    method Action put(Bit#(640) data);
 endinterface
 
 interface BenesSwitchEgressPort;
-    method ActionValue#(Bit#(64)) get;
+    method ActionValue#(Bit#(640)) get;
 endinterface
 
 interface BenesSwitchControlPort;
@@ -30,8 +30,8 @@ interface BenesSwitch;
 endinterface
 
 module mkBenesSwitch(BenesSwitch);
-    Vector#(2, Fifo#(1, Bit#(64))) inputs <- replicateM(mkBypassFifo);
-    Vector#(2, Fifo#(1, Bit#(64))) outputs <- replicateM(mkPipelineFifo);
+    Vector#(2, Fifo#(1, Bit#(640))) inputs <- replicateM(mkBypassFifo);
+    Vector#(2, Fifo#(1, Bit#(640))) outputs <- replicateM(mkPipelineFifo);
     Fifo#(1, BenesSwitchControl) control <- mkBypassFifo;
 
     rule doOperation if (control.notEmpty);
@@ -88,7 +88,7 @@ module mkBenesSwitch(BenesSwitch);
     Vector#(2, BenesSwitchIngressPort) inPortDef;
     for (Integer i = 0; i < 2; i = i + 1) begin
         inPortDef[i] = interface BenesSwitchIngressPort
-            method Action put(Bit#(64) data) if (inputs[i].notFull());
+            method Action put(Bit#(640) data) if (inputs[i].notFull());
                 inputs[i].enq(data);
             endmethod
         endinterface;
@@ -97,7 +97,7 @@ module mkBenesSwitch(BenesSwitch);
     Vector#(2, BenesSwitchEgressPort) outPortDef;
     for (Integer i = 0; i < 2; i = i + 1) begin
         outPortDef[i] = interface BenesSwitchEgressPort
-            method ActionValue#(Bit#(64)) get if (outputs[i].notEmpty());
+            method ActionValue#(Bit#(640)) get if (outputs[i].notEmpty());
                 outputs[i].deq();
                 return outputs[i].first();
             endmethod

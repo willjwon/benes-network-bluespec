@@ -5,7 +5,7 @@ import AdderSwitch::*;
 (* synthesize *)
 module mkAdderSwitchTest();
     Reg#(Bit#(32)) cycle <- mkReg(0);
-    AdderSwitch#(Bit#(64)) switch <- mkAdderSwitch;
+    AdderSwitch#(Bit#(640)) switch <- mkAdderSwitch;
 
     rule countUp;
         cycle <= cycle + 1;
