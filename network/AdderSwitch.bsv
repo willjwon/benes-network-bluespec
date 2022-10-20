@@ -2,7 +2,8 @@ package AdderSwitch;
 
 import Vector::*;
 import Fifo::*;
-import Adder::*;
+import FP64::*;
+import FP64Adder::*;
 import Connectable::*;
 
 typedef enum {
@@ -16,40 +17,37 @@ typedef enum {
     Bits, Eq
 );
 
-interface AdderSwitchIngressPort#(type dataType);
-    method Action put(dataType data);
+interface AdderSwitchIngressPort;
+    method Action put(Bit#(64) data);
 endinterface
 
-interface AdderSwitchEgressPort#(type dataType);
-    method ActionValue#(dataType) get;
+interface AdderSwitchEgressPort;
+    method ActionValue#(Bit#(64)) get;
 endinterface
 
 interface AdderSwitchControlPort;
     method Action setControl(AdderSwitchControl newControl);
 endinterface
 
-interface AdderSwitch#(type dataType);
-    interface Vector#(2, AdderSwitchIngressPort#(dataType)) inPort;
-    interface Vector#(2, AdderSwitchEgressPort#(dataType)) outPort;
+interface AdderSwitch;
+    interface Vector#(2, AdderSwitchIngressPort) inPort;
+    interface Vector#(2, AdderSwitchEgressPort) outPort;
     interface AdderSwitchControlPort controlPort;
 endinterface
 
-module mkAdderSwitch(AdderSwitch#(dataType)) provisos (
-    Bits#(dataType, dataTypeBitLength),
-    Arith#(dataType)
-);
-    Vector#(2, Fifo#(1, dataType)) inputs <- replicateM(mkBypassFifo);
-    Vector#(2, Fifo#(1, dataType)) outputs <- replicateM(mkPipelineFifo);
+module mkAdderSwitch(AdderSwitch);
+    Vector#(2, Fifo#(1, Bit#(64))) inputs <- replicateM(mkBypassFifo);
+    Vector#(2, Fifo#(1, Bit#(64))) outputs <- replicateM(mkPipelineFifo);
     Fifo#(1, AdderSwitchControl) control <- mkBypassFifo;
 
     // instantiate adder
-    Adder#(dataType) adder <- mkAdder;
-    Fifo#(1, dataType) adderResult <- mkBypassFifo;
-    mkConnection(adder.get, adderResult.enq);
+    let adder <- mkLI_FP64Adder;
+    Fifo#(1, Bit#(64)) adderResult <- mkBypassFifo;
+    mkConnection(adder.getResult, adderResult.enq);
 
     rule doAddition if (inputs[0].notEmpty && inputs[1].notEmpty);
-        adder.putA(inputs[0].first);
-        adder.putB(inputs[1].first);
+        adder.putArgA(inputs[0].first);
+        adder.putArgB(inputs[1].first);
     endrule
 
     rule doOperation if (control.notEmpty);
@@ -120,19 +118,19 @@ module mkAdderSwitch(AdderSwitch#(dataType)) provisos (
     endrule
 
     // Interfaces
-    Vector#(2, AdderSwitchIngressPort#(dataType)) inPortDef;
+    Vector#(2, AdderSwitchIngressPort) inPortDef;
     for (Integer i = 0; i < 2; i = i + 1) begin
         inPortDef[i] = interface AdderSwitchIngressPort
-            method Action put(dataType data) if (inputs[i].notFull());
+            method Action put(Bit#(64) data) if (inputs[i].notFull());
                 inputs[i].enq(data);
             endmethod
         endinterface;
     end
 
-    Vector#(2, AdderSwitchEgressPort#(dataType)) outPortDef;
+    Vector#(2, AdderSwitchEgressPort) outPortDef;
     for (Integer i = 0; i < 2; i = i + 1) begin
         outPortDef[i] = interface AdderSwitchEgressPort
-            method ActionValue#(dataType) get if (outputs[i].notEmpty());
+            method ActionValue#(Bit#(64)) get if (outputs[i].notEmpty());
                 outputs[i].deq();
                 return outputs[i].first();
             endmethod

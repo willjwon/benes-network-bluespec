@@ -2,7 +2,6 @@ package BenesSwitch;
 
 import Vector::*;
 import Fifo::*;
-import Adder::*;
 
 typedef enum {
     NoSwitch,
@@ -12,30 +11,27 @@ typedef enum {
     Bits, Eq
 );
 
-interface BenesSwitchIngressPort#(type dataType);
-    method Action put(dataType data);
+interface BenesSwitchIngressPort;
+    method Action put(Bit#(64) data);
 endinterface
 
-interface BenesSwitchEgressPort#(type dataType);
-    method ActionValue#(dataType) get;
+interface BenesSwitchEgressPort;
+    method ActionValue#(Bit#(64)) get;
 endinterface
 
 interface BenesSwitchControlPort;
     method Action setControl(BenesSwitchControl newControl);
 endinterface
 
-interface BenesSwitch#(type dataType);
-    interface Vector#(2, BenesSwitchIngressPort#(dataType)) inPort;
-    interface Vector#(2, BenesSwitchEgressPort#(dataType)) outPort;
+interface BenesSwitch;
+    interface Vector#(2, BenesSwitchIngressPort) inPort;
+    interface Vector#(2, BenesSwitchEgressPort) outPort;
     interface BenesSwitchControlPort controlPort;
 endinterface
 
-module mkBenesSwitch(BenesSwitch#(dataType)) provisos (
-    Bits#(dataType, dataTypeBitLength),
-    Arith#(dataType)
-);
-    Vector#(2, Fifo#(1, dataType)) inputs <- replicateM(mkBypassFifo);
-    Vector#(2, Fifo#(1, dataType)) outputs <- replicateM(mkPipelineFifo);
+module mkBenesSwitch(BenesSwitch);
+    Vector#(2, Fifo#(1, Bit#(64))) inputs <- replicateM(mkBypassFifo);
+    Vector#(2, Fifo#(1, Bit#(64))) outputs <- replicateM(mkPipelineFifo);
     Fifo#(1, BenesSwitchControl) control <- mkBypassFifo;
 
     rule doOperation if (control.notEmpty);
@@ -89,19 +85,19 @@ module mkBenesSwitch(BenesSwitch#(dataType)) provisos (
     endrule
 
     // Interfaces
-    Vector#(2, BenesSwitchIngressPort#(dataType)) inPortDef;
+    Vector#(2, BenesSwitchIngressPort) inPortDef;
     for (Integer i = 0; i < 2; i = i + 1) begin
         inPortDef[i] = interface BenesSwitchIngressPort
-            method Action put(dataType data) if (inputs[i].notFull());
+            method Action put(Bit#(64) data) if (inputs[i].notFull());
                 inputs[i].enq(data);
             endmethod
         endinterface;
     end
 
-    Vector#(2, BenesSwitchEgressPort#(dataType)) outPortDef;
+    Vector#(2, BenesSwitchEgressPort) outPortDef;
     for (Integer i = 0; i < 2; i = i + 1) begin
         outPortDef[i] = interface BenesSwitchEgressPort
-            method ActionValue#(dataType) get if (outputs[i].notEmpty());
+            method ActionValue#(Bit#(64)) get if (outputs[i].notEmpty());
                 outputs[i].deq();
                 return outputs[i].first();
             endmethod

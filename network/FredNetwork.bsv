@@ -2,26 +2,25 @@ package FredNetwork;
 
 import Vector::*;
 import Fifo::*;
+import FP64::*;
 import Connectable::*;
 import BenesSwitch::*;
 import AdderSwitch::*;
 
-interface FredNetworkIngressPort#(type dataType);
-    method Action put(dataType data);
+interface FredNetworkIngressPort;
+    method Action put(Bit#(64) data);
 endinterface
 
-interface FredNetworkEgressPort#(type dataType);
-    method ActionValue#(dataType) get;
+interface FredNetworkEgressPort;
+    method ActionValue#(Bit#(64)) get;
 endinterface
 
-interface FredNetwork#(numeric type portsCount, type dataType);
-    interface Vector#(portsCount, FredNetworkIngressPort#(dataType)) inPort;
-    interface Vector#(portsCount, FredNetworkEgressPort#(dataType)) outPort;
+interface FredNetwork#(numeric type portsCount);
+    interface Vector#(portsCount, FredNetworkIngressPort) inPort;
+    interface Vector#(portsCount, FredNetworkEgressPort) outPort;
 endinterface
 
-module mkFredNetwork(FredNetwork#(portsCount, dataType)) provisos (
-    Bits#(dataType, dataTypeBitLength),
-    Arith#(dataType),
+module mkFredNetwork(FredNetwork#(portsCount)) provisos (
     NumAlias#(TDiv#(portsCount, 2), switchesPerLevel),
     NumAlias#(TLog#(portsCount), adderLevelsCount),
     NumAlias#(TSub#(adderLevelsCount, 1), benesLevelsCount)
@@ -30,9 +29,9 @@ module mkFredNetwork(FredNetwork#(portsCount, dataType)) provisos (
     Integer adderLastLevel = valueOf(adderLevelsCount) - 1;
 
     // switches
-    Vector#(adderLevelsCount, Vector#(switchesPerLevel, AdderSwitch#(dataType)))
+    Vector#(adderLevelsCount, Vector#(switchesPerLevel, AdderSwitch))
         adderSwitches <- replicateM(replicateM(mkAdderSwitch));
-    Vector#(benesLevelsCount, Vector#(switchesPerLevel, BenesSwitch#(dataType)))
+    Vector#(benesLevelsCount, Vector#(switchesPerLevel, BenesSwitch))
         benesSwitches <- replicateM(replicateM(mkBenesSwitch));
 
     // connect adder switches
@@ -88,49 +87,49 @@ module mkFredNetwork(FredNetwork#(portsCount, dataType)) provisos (
         offset = offset / 2;
     end
 
-    rule broadcast;
-        for (Integer i = 0; i < valueOf(switchesPerLevel); i = i + 1) begin
-            for (Integer j = 0; j < valueOf(benesLevelsCount); j = j + 1) begin
-                benesSwitches[j][i].controlPort.setControl(Switch);
-            end
+    // rule broadcast;
+    //     for (Integer i = 0; i < valueOf(switchesPerLevel); i = i + 1) begin
+    //         for (Integer j = 0; j < valueOf(benesLevelsCount); j = j + 1) begin
+    //             benesSwitches[j][i].controlPort.setControl(Switch);
+    //         end
 
-            for (Integer j = 0; j < valueOf(adderLevelsCount); j = j + 1) begin
-                adderSwitches[j][i].controlPort.setControl(Switch);
-            end
-        end
-    endrule
+    //         for (Integer j = 0; j < valueOf(adderLevelsCount); j = j + 1) begin
+    //             adderSwitches[j][i].controlPort.setControl(Switch);
+    //         end
+    //     end
+    // endrule
 
     // Interfaces
-    Vector#(portsCount, FredNetworkIngressPort#(dataType)) inPortDef;
+    Vector#(portsCount, FredNetworkIngressPort) inPortDef;
     for (Integer i = 0; i < valueOf(portsCount); i = i + 2) begin
         Integer switchIndex = i / 2;
 
         inPortDef[i] = interface FredNetworkIngressPort
-            method Action put(dataType data);
+            method Action put(Bit#(64) data);
                 adderSwitches[0][switchIndex].inPort[0].put(data); 
             endmethod
         endinterface;
 
         inPortDef[i + 1] = interface FredNetworkIngressPort
-            method Action put(dataType data);
+            method Action put(Bit#(64) data);
                 adderSwitches[0][switchIndex].inPort[1].put(data); 
             endmethod
         endinterface;
     end
 
-    Vector#(portsCount, FredNetworkEgressPort#(dataType)) outPortDef;
+    Vector#(portsCount, FredNetworkEgressPort) outPortDef;
     for (Integer i = 0; i < valueOf(portsCount); i = i + 2) begin
         Integer switchIndex = i / 2;
 
         outPortDef[i] = interface FredNetworkEgressPort
-            method ActionValue#(dataType) get();
+            method ActionValue#(Bit#(64)) get();
                 let result <- benesSwitches[benesLastLevel][switchIndex].outPort[0].get(); 
                 return result;
             endmethod
         endinterface;
 
         outPortDef[i + 1] = interface FredNetworkEgressPort
-            method ActionValue#(dataType) get();
+            method ActionValue#(Bit#(64)) get();
                 let result <- benesSwitches[benesLastLevel][switchIndex].outPort[1].get(); 
                 return result;
             endmethod

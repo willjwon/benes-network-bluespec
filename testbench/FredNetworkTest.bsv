@@ -7,7 +7,7 @@ typedef 8 PortsCount;
 (* synthesize *)
 module mkFredNetworkTest();
     Reg#(Bit#(32)) cycle <- mkReg(0);
-    FredNetwork#(PortsCount, Bit#(64)) fredNetwork <- mkFredNetwork;
+    FredNetwork#(PortsCount) fredNetwork <- mkFredNetwork;
 
     rule countUp;
         cycle <= cycle + 1;
